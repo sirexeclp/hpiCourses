@@ -34,4 +34,3 @@ for line in results:
 
 df = pd.DataFrame(columns=["Name","Belegungsart","Benotet","ECTS","Einschreibefrist","Lehrform","Lehrsprache","Semesterwochenstunden"])
 df = df.append(dicts,ignore_index = True)
-df
