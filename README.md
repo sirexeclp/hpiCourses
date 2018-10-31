@@ -9,3 +9,7 @@ Folgende Pakete müssen installiert sein:
 - requests
 
     pip install -r requirements.txt
+
+## ER-Model
+
+![Ein Bild des ER-Models](ER-Model/HPICoursesERModel.PNG "Hier könnte ihre Werbung stehen!")
