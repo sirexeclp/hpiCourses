@@ -8,5 +8,4 @@ Folgende Pakete müssen installiert sein:
 - lxml
 - requests
 
-  pip install lxml
-  pip install requests
+    pip install -r dependencies.txt
