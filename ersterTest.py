@@ -1,36 +1,159 @@
+#%% imports
 import requests
-from lxml import html
+from lxml import html, etree
 import pandas as pd
+from urllib.parse import urljoin
+import numpy as np
+import pickle
 
-
+#%%
 def get(url):
-    result = sessionRequests.get(url
+	"""Uses HTTP-GET to request a webresource and converts the result into html-object."""
+	result = sessionRequests.get(url
 		,headers=dict(referer = url))
-    return html.fromstring(result.content)
+	return html.fromstring(result.content)
 
+def apply(self, other)->list:
+	return list(map(other, self))
+
+#%%
 sessionRequests = requests.session()
 
-lvItSe = get("https://hpi.de/studium/lehrveranstaltungen/it-systems-engineering-ma.html")
+baseURL = "https://hpi.de/studium/lehrveranstaltungen"
 
-listOfCourses = lvItSe.xpath("//div[@id = 'c6584']//tr//td[1]//a/@href")
+def getLVOverwievs(url) -> dict:
+	"""crawls the main hpi courses website to obtain a list of courselists (eg. Bachelor, Master courses, etc.) """
+	lvSuperList = get(url)
+	lvOverviews = lvSuperList.xpath("//h1[contains(text(),'Lehrveranstaltungen')]//following-sibling::ul//a")
+	return {x.text:x.get("href") for x in lvOverviews}
 
-results = []
-for courseLink in listOfCourses:
-    courseWebsite = get("https://hpi.de/"+courseLink)
-    tmp = courseWebsite.xpath("//h1[1]/text()")
-    tmp.extend(courseWebsite.xpath("//div[@id = 'c6681']//ul[1]//li//text()"))
-    results.append(tmp)
+lvOverviews = getLVOverwievs(baseURL)
 
-dicts = []
-for line in results:
-    tmp = {}
-    tmp["Name"] = line[0]
-    for item in line:
-        if len(item.split(":")) == 2:
-            key,val = item.split(":")
-            tmp[key] = val.strip()
-    dicts.append(tmp)
+#expand to full path
+lvOverviews = list(map(lambda x:urljoin(baseURL,x),lvOverviews.values()))
 
 
-df = pd.DataFrame(columns=["Name","Belegungsart","Benotet","ECTS","Einschreibefrist","Lehrform","Lehrsprache","Semesterwochenstunden"])
-df = df.append(dicts,ignore_index = True)
+def extractDictOfCourses(url):
+	"""Crawls a table-page with courses and returns a dict coursename and URL to coursepage """
+	courseListPage = get(url)
+	return {item.text.strip(): urljoin(url,item.get("href")) for item in
+		 courseListPage.xpath("//div[@id = 'content']//table//tr//td[1]//a")}
+
+#list of Courses
+listOfCourses = list (map(extractDictOfCourses,lvOverviews))
+
+
+def combineLinkList(linkList):
+	"""combines the list of dicts to one big list, which only contains URLs"""
+	return [courseLink for subject in 
+		linkList for courseLink in subject.values()]
+
+urlsToCrawl = combineLinkList(listOfCourses)
+
+#%%
+import time
+def downloadCourseSites(urls,delay = 0.1):
+	"""downloads the individual course websites """
+	result = []
+	for item in urls:
+		result.append(get(item))
+		print(f"got {item.split('/')[-1]}")
+		time.sleep(delay)
+	return result
+
+courseWebsites = downloadCourseSites (urlsToCrawl)
+
+
+#%% save/load crawled websites with pickle
+
+# courseWebsitesString = [etree.tostring(x) for x in courseWebsites]
+
+# with open("websites.pkl","wb") as file:
+# 	pickle.dump(courseWebsitesString, file)
+#%%
+"""uncomment this to load the locally saved websites"""
+# with open("websites.pkl","rb") as file:
+# 	cws = pickle.load(file)
+
+#courseWebsites = [html.fromstring(x) for x in cws]
+
+#%%
+def findAllFiles(secondPage, secondURL, fileExtension):
+	"""Finds all Links, on given website at given url that destination ends with
+	the given fileextension."""
+	assert secondPage, "Second page must not be 'None'."
+	return [urljoin(secondURL,x) for x in 
+		secondPage.xpath(f"//a[contains(@href,'{fileExtension}')]/@href")]
+
+#%%
+"""lets create a list of dicts where each dict holds infos about one course"""
+allCourses = []
+for site,url in zip(courseWebsites, urlsToCrawl):
+	course = {}
+	#get the main heading of the coursesite which should contain the coursename and semester
+	fullTitle = site.xpath("//h1[1]/text()")[0]
+	#use this regex to split coursename and semester
+	matches = re.search(r"(.*)\((.*)\)",fullTitle)
+
+	if matches:
+		course["Name"] = matches[1]
+		course["Semester"] = matches[2]
+	else:
+		#if regex did not match anything, just use the whole headline as coursetitle and 
+		#assume theres no semester given
+		course["Name"] = fullTitle
+	#course["URL"] = url
+	#find the link after '...Website', which should be the link to the 2nd course page
+	secondURL = site.xpath("//div/text()[contains(.,'Website')]/following-sibling::i/a/@href")
+	secondURL = secondURL[0] if secondURL else None
+	secondPage = None
+	if secondURL:
+		course["secondURL"] = secondURL
+		secondPage = get(urljoin(url,secondURL))
+		#course["files"] = findAllFiles(secondPage, secondURL, ".pdf")
+	
+	#extract all basic infos from a list on the course page
+	for item in site.xpath("//h2[contains(text(),'Allgemeine Information')]/following-sibling::ul[1]//li//text()"):
+		if len(item.split(":")) == 2:
+			key,val = item.split(":")
+			course[key] = val.strip()
+	allCourses.append(course)
+
+
+
+
+#%%
+"""Create a DataFrame from the dicts"""
+df = pd.DataFrame(columns=["Name"
+	,"Website"
+	,"Belegungsart"
+	,"Benotet"
+	,"ECTS"
+	,"Einschreibefrist"
+	,"Lehrform"
+	,"Lehrsprache"
+	,"Semesterwochenstunden"
+	,"URL"
+	#,"files"
+	,"secondURL"
+	])
+df = df.append(allCourses,ignore_index = True)
+
+df[df["Name"].str.contains("Basic")]
+df.drop_duplicates()
+
+#%%
+
+
+# pdfFile = r"C:\Users\ktvsp\OneDrive\Studium\HPI\Verlegungsplan_KW_45.pdf"
+
+# import PyPDF2
+
+# text = PyPDF2.PdfFileReader(open(pdfFile,"rb"))
+
+# text =text.getPage(0).extractText().split("\n")
+
+# meineLvs = ["Algorithmix"]#, "Network Security in Practice", "Visualization",  "Business Process Analysis in Healthcare"]
+# for index,line in enumerate(text):
+# 	if any(filter(lambda x: x in line,meineLvs)):
+# 		print(f"{text[index-1]} -- {line} -- {text[index+1]}")
