@@ -144,3 +144,7 @@ df = df.append(allCourses,ignore_index = True)
 duplicatesRemoved = df.drop_duplicates(df.columns.difference(["files","URL"]))
 
 list(duplicatesRemoved[duplicatesRemoved.Name.str.contains("Preparation")].files)
+duplicatesRemoved[duplicatesRemoved.Name.str.contains("Preparation")][["Name","URL"]]
+
+
+duplicatesRemoved.to_csv("coursesExort.csv")
