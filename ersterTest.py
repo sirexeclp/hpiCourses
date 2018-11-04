@@ -5,6 +5,7 @@ import pandas as pd
 from urllib.parse import urljoin
 import numpy as np
 import pickle
+import re
 
 #%%
 def get(url):
@@ -75,7 +76,7 @@ courseWebsites = downloadCourseSites (urlsToCrawl)
 # with open("websites.pkl","rb") as file:
 # 	cws = pickle.load(file)
 
-#courseWebsites = [html.fromstring(x) for x in cws]
+# courseWebsites = [html.fromstring(x) for x in cws]
 
 #%%
 def findAllFiles(secondPage, secondURL, fileExtension):
@@ -102,7 +103,7 @@ for site,url in zip(courseWebsites, urlsToCrawl):
 		#if regex did not match anything, just use the whole headline as coursetitle and 
 		#assume theres no semester given
 		course["Name"] = fullTitle
-	#course["URL"] = url
+	course["URL"] = url
 	#find the link after '...Website', which should be the link to the 2nd course page
 	secondURL = site.xpath("//div/text()[contains(.,'Website')]/following-sibling::i/a/@href")
 	secondURL = secondURL[0] if secondURL else None
@@ -110,7 +111,7 @@ for site,url in zip(courseWebsites, urlsToCrawl):
 	if secondURL:
 		course["secondURL"] = secondURL
 		secondPage = get(urljoin(url,secondURL))
-		#course["files"] = findAllFiles(secondPage, secondURL, ".pdf")
+		course["files"] = findAllFiles(secondPage, secondURL, ".pdf")
 	
 	#extract all basic infos from a list on the course page
 	for item in site.xpath("//h2[contains(text(),'Allgemeine Information')]/following-sibling::ul[1]//li//text()"):
@@ -134,26 +135,11 @@ df = pd.DataFrame(columns=["Name"
 	,"Lehrsprache"
 	,"Semesterwochenstunden"
 	,"URL"
-	#,"files"
+	,"files"
 	,"secondURL"
 	])
 df = df.append(allCourses,ignore_index = True)
 
-df[df["Name"].str.contains("Basic")]
-df.drop_duplicates()
+#remove duplicates, but ignore files and URL column
+duplicatesRemoved = df.drop_duplicates(df.columns.difference(["files","URL"]))
 
-#%%
-
-
-# pdfFile = r"C:\Users\ktvsp\OneDrive\Studium\HPI\Verlegungsplan_KW_45.pdf"
-
-# import PyPDF2
-
-# text = PyPDF2.PdfFileReader(open(pdfFile,"rb"))
-
-# text =text.getPage(0).extractText().split("\n")
-
-# meineLvs = ["Algorithmix"]#, "Network Security in Practice", "Visualization",  "Business Process Analysis in Healthcare"]
-# for index,line in enumerate(text):
-# 	if any(filter(lambda x: x in line,meineLvs)):
-# 		print(f"{text[index-1]} -- {line} -- {text[index+1]}")
