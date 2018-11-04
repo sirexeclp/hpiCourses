@@ -112,7 +112,11 @@ for site,url in zip(courseWebsites, urlsToCrawl):
 		course["secondURL"] = secondURL
 		secondPage = get(secondURL)
 		course["files"] = findAllFiles(secondPage, secondURL, ".pdf")
-	
+		      
+  	#Margaux Anrechenbarkeit
+    	anreItSe = site.xpath("//div[contains(text(),'IT-Systems Engineering MA')]//following-sibling::ul//li//text()")
+   	course["Anrechenbarkeit ItSe"] = anreItSe 
+		      
 	#extract all basic infos from a list on the course page
 	for item in site.xpath("//h2[contains(text(),'Allgemeine Information')]/following-sibling::ul[1]//li//text()"):
 		if len(item.split(":")) == 2:
@@ -134,6 +138,7 @@ df = pd.DataFrame(columns=["Name"
 	,"Lehrform"
 	,"Lehrsprache"
 	,"Semesterwochenstunden"
+	,"Anrechenbarkeit ItSe"
 	,"URL"
 	,"files"
 	,"secondURL"
@@ -144,7 +149,10 @@ df = df.append(allCourses,ignore_index = True)
 duplicatesRemoved = df.drop_duplicates(df.columns.difference(["files","URL"]))
 
 list(duplicatesRemoved[duplicatesRemoved.Name.str.contains("Preparation")].files)
+<<<<<<< HEAD
 duplicatesRemoved[duplicatesRemoved.Name.str.contains("Preparation")][["Name","URL"]]
 
 
 duplicatesRemoved.to_csv("coursesExort.csv")
+=======
+>>>>>>> origin/master
