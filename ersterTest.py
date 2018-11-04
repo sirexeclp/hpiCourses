@@ -106,11 +106,11 @@ for site,url in zip(courseWebsites, urlsToCrawl):
 	course["URL"] = url
 	#find the link after '...Website', which should be the link to the 2nd course page
 	secondURL = site.xpath("//div/text()[contains(.,'Website')]/following-sibling::i/a/@href")
-	secondURL = secondURL[0] if secondURL else None
+	secondURL = urljoin(url, secondURL[0]) if secondURL else None
 	secondPage = None
 	if secondURL:
 		course["secondURL"] = secondURL
-		secondPage = get(urljoin(url,secondURL))
+		secondPage = get(secondURL)
 		course["files"] = findAllFiles(secondPage, secondURL, ".pdf")
 	
 	#extract all basic infos from a list on the course page
@@ -126,7 +126,7 @@ for site,url in zip(courseWebsites, urlsToCrawl):
 #%%
 """Create a DataFrame from the dicts"""
 df = pd.DataFrame(columns=["Name"
-	,"Website"
+	#,"Website"
 	,"Belegungsart"
 	,"Benotet"
 	,"ECTS"
@@ -143,3 +143,4 @@ df = df.append(allCourses,ignore_index = True)
 #remove duplicates, but ignore files and URL column
 duplicatesRemoved = df.drop_duplicates(df.columns.difference(["files","URL"]))
 
+list(duplicatesRemoved[duplicatesRemoved.Name.str.contains("Preparation")].files)
