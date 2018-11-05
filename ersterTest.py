@@ -348,9 +348,14 @@ duplicatesRemoved = df.drop_duplicates(df.columns.difference(["files","URL"]))
 
 list(duplicatesRemoved[duplicatesRemoved.Name.str.contains("Preparation")].files)
 <<<<<<< HEAD
+<<<<<<< HEAD
 duplicatesRemoved[duplicatesRemoved.Name.str.contains("Preparation")][["Name","URL"]]
 
 
 duplicatesRemoved.to_csv("coursesExort.csv")
 =======
 >>>>>>> origin/master
+=======
+
+df.to_csv("test.csv")
+>>>>>>> felix-dev
